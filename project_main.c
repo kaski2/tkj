@@ -60,7 +60,7 @@ void buttonFxn(PIN_Handle handle, PIN_Id pinId) {
 
 /* Task Functions */
 Void uartTaskFxn(UArg arg0, UArg arg1) {
-    char string[15];
+    char string[100];
     // JTKJ: Teht�v� 4. Lis�� UARTin alustus: 9600,8n1
     // JTKJ: Exercise 4. Setup here UART connection as 9600,8n1
 
@@ -82,18 +82,26 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
              System_abort("Error opening the UART");
           }
 
+
+
     while (1) {
 
         // JTKJ: Teht�v� 3. Kun tila on oikea, tulosta sensoridata merkkijonossa debug-ikkunaan
         //       Muista tilamuutos
         // JTKJ: Exercise 3. Print out sensor data as string to debug window if the state is correct
         //       Remember to modify state
+
+        sprintf(string, "id:3255,MSG1:asd,MSG2:ASD\0");
+        UART_write(uart, string, 26);
+
+
+/*
         if(programState == DATA_READY){
             sprintf(string, "%.3lf\n\r", ambientLight);
             System_printf(string);
             programState = WAITING;
             UART_write(uart, string, 10);
-        }
+        }*/
 
         // JTKJ: Teht�v� 4. L�het� sama merkkijono UARTilla
         // JTKJ: Exercise 4. Send the same sensor data string with UART
