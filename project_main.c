@@ -39,6 +39,7 @@ enum motionState sensorState = MOTION_SENSOR;
 // JTKJ: Teht�v� 3. Valoisuuden globaali muuttuja
 // JTKJ: Exercise 3. Global variable for ambient light
 double ambientLight = -1000.0;
+float ax, ay, az, gx, gy, gz;
 
 // JTKJ: Teht�v� 1. Lis�� painonappien RTOS-muuttujat ja alustus
 static PIN_Handle buttonHandle;
@@ -148,7 +149,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
-    float ax, ay, az, gx, gy, gz;
+
     Char string[10];
 
     I2C_Handle      i2c;
