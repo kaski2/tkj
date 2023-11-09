@@ -7,5 +7,5 @@
 #       or equal to the generated config header
 #
 linker.cmd: package/cfg/empty_pem3.xdl
-	$(SED) 's"^\"\(package/cfg/empty_pem3cfg.cmd\)\"$""\"/home/linuxlite/Desktop/tkj/jtkj-sensortag-gateway/empty_CC2650STK_TI_2023/Debug/configPkg/\1\""' package/cfg/empty_pem3.xdl > $@
+	$(SED) 's"^\"\(package/cfg/empty_pem3cfg.cmd\)\"$""\"/home/linuxlite/tkj/tkj/Debug/configPkg/\1\""' package/cfg/empty_pem3.xdl > $@
 	-$(SETDATE) -r:max package/cfg/empty_pem3.h compiler.opt compiler.opt.defs
