@@ -1,6 +1,7 @@
 /* C Standard library */
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 /* XDCtools files */
 #include <xdc/std.h>
@@ -22,6 +23,8 @@
 #include "Board.h"
 #include "sensors/opt3001.h"
 #include "sensors/mpu9250.h"
+
+#include "motion.h"
 
 /* Task */
 #define STACKSIZE 2048
@@ -106,7 +109,8 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
           }
 
 
-
+        sprintf(string, "session:start\0");
+        UART_write(uart, string, 13);
     while (1) {
 
         // JTKJ: Teht�v� 3. Kun tila on oikea, tulosta sensoridata merkkijonossa debug-ikkunaan
@@ -116,10 +120,11 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
         //sprintf(string, "id:3255,MSG1:asd,MSG2:ASD\0");
         //UART_write(uart, string, 26);
+        //sprintf(string, "id:3255,%.2lf")
 
 
 
-        if(programState == DATA_READY){
+        /*if(programState == DATA_READY){
             int length;
             if(ambientLight < 500){
                 sprintf(string, "id:3255,MSG1:It's dark\0");
@@ -127,12 +132,12 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             }else {
                 sprintf(string, "id:3255,MSG1:It's bright\0");
                 length = 25;
-            }
-            sprintf(debugString, "%.3f\n", ambientLight);
-            System_printf(debugString);
-            programState = WAITING;
-            UART_write(uart, string, length);
-        }
+            }*/
+            sprintf(debugString, "id:3255,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,\0", ax, ay, az, gx, gy, gz);
+            //System_printf(debugString);
+            //programState = WAITING;
+            UART_write(uart, debugString, 25);
+
 
         // JTKJ: Teht�v� 4. L�het� sama merkkijono UARTilla
         // JTKJ: Exercise 4. Send the same sensor data string with UART
@@ -150,16 +155,16 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
 
-    Char string[10];
+    Char string[30];
 
-    I2C_Handle      i2c;
-    I2C_Params      i2cParams;
+    //I2C_Handle      i2c;
+    //I2C_Params      i2cParams;
     I2C_Handle      i2cMotion;
     I2C_Params      i2cMotionParams;
 
-    I2C_Params_init(&i2cParams);
+    //I2C_Params_init(&i2cParams);
     I2C_Params_init(&i2cMotionParams);
-    i2cParams.bitRate = I2C_400kHz;
+    //i2cParams.bitRate = I2C_400kHz;
     i2cMotionParams.bitRate = I2C_400kHz;
     i2cMotionParams.custom = (uintptr_t)&i2cMPUCfg;
 
@@ -170,23 +175,23 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
     // JTKJ: Exercise 2. Open the i2c bus
 
     PIN_setOutputValue(hMpuPin,Board_MPU_POWER, Board_MPU_POWER_ON);
-
+/*
        i2c = I2C_open(Board_I2C_TMP, &i2cParams);
           if (i2c == NULL) {
              System_abort("Error Initializing I2C\n");
           }
           Task_sleep(100000/Clock_tickPeriod);
 
-
-          opt3001_setup(&i2c);
-          I2C_close(i2c);
+*/
+          //opt3001_setup(&i2c);
+          //I2C_close(i2c);
           i2cMotion = I2C_open(Board_I2C_TMP, &i2cMotionParams);
          if (i2cMotion == NULL) {
                  System_abort("Error Initializing I2C\n");
          }
          Task_sleep(100000/Clock_tickPeriod);
          mpu9250_setup(&i2cMotion);
-        I2C_close(i2cMotion);
+        //I2C_close(i2cMotion);
 
     // JTKJ: Exercise 2. Setup the OPT3001 sensor for use
     //       Before calling the setup function, insertt 100ms delay with Task_sleep
@@ -202,7 +207,8 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         //       Muista tilamuutos
         // JTKJ: Exercise 3. Save the sensor value into the global variable
         //       Remember to modify state
-        if(sensorState == LIGHT_SENSOR){
+
+        /*if(sensorState == LIGHT_SENSOR){
             i2c = I2C_open(Board_I2C_TMP, &i2cParams);
             if (i2c == NULL) {
                  System_abort("Error Initializing I2C\n");
@@ -211,17 +217,39 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
             ambientLight = opt3001_get_data(&i2c);
             sprintf(string, "%.3lf", ambientLight);
-            programState = DATA_READY;
-        }else if(sensorState == MOTION_SENSOR){
+            programState = DATA_READY;*/
+        //}else if(sensorState == MOTION_SENSOR){
+
             mpu9250_get_data(&i2cMotion, &ax, &ay, &az, &gx, &gy, &gz);
-            Task_sleep(100000 / Clock_tickPeriod);
-        }
+
+
+            int lift = detectLift(ax, ay, az, gx);
+            if(lift == 1){
+                sprintf(string, "Lift Up\n");
+                System_printf(string);
+                System_flush();
+            }
+
+            int slide = detectSlide(ax, ay, az, gx, gy, gz);
+            if(slide == 1){
+                sprintf(string, "Slide\n");
+                System_printf(string);
+                System_flush();
+            }
+
+            int turn = detectTurn(ax, ay, az, gx);
+            if(turn == 1){
+                sprintf(string, "Turn\n");
+                System_printf(string);
+                System_flush();
+            }
+
 
 
         // Just for sanity check for exercise, you can comment this out
-        //System_printf("sensorTask\n");
+       // System_printf("sensorTask\n");
         //System_printf("%s\n",string);
-        System_flush();
+        //System_flush();
 
         // Once per second, you can modify this
         Task_sleep(1000000 / Clock_tickPeriod);
