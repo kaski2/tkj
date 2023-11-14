@@ -31,11 +31,14 @@
 Char sensorTaskStack[STACKSIZE];
 Char uartTaskStack[STACKSIZE];
 
+
+
+
 // JTKJ: Teht�v� 3. Tilakoneen esittely
 // JTKJ: Exercise 3. Definition of the state machine
 enum state { WAITING=1, DATA_READY };
 enum state programState = WAITING;
-
+//TODO MAYBE TEMP SENSOR :)
 enum motionState {MOTION_SENSOR=1, LIGHT_SENSOR};
 enum motionState sensorState = MOTION_SENSOR;
 
@@ -43,6 +46,7 @@ enum motionState sensorState = MOTION_SENSOR;
 // JTKJ: Exercise 3. Global variable for ambient light
 double ambientLight = -1000.0;
 float ax, ay, az, gx, gy, gz;
+int pet, feed, workout;
 
 // JTKJ: Teht�v� 1. Lis�� painonappien RTOS-muuttujat ja alustus
 static PIN_Handle buttonHandle;
@@ -75,8 +79,11 @@ void buttonFxn(PIN_Handle handle, PIN_Id pinId) {
        uint_t pinValue = PIN_getOutputValue( Board_LED0 );
        pinValue = !pinValue;
        PIN_setOutputValue( ledHandle, Board_LED0, pinValue );
+
+
        if(sensorState == MOTION_SENSOR){
            sensorState = LIGHT_SENSOR;
+
        }else {
            sensorState = MOTION_SENSOR;
        }
@@ -87,7 +94,7 @@ void buttonFxn(PIN_Handle handle, PIN_Id pinId) {
 /* Task Functions */
 Void uartTaskFxn(UArg arg0, UArg arg1) {
     char string[100];
-    char debugString[100];
+    //char debugString[100];
     // UART alustus
 
     UART_Handle uart;
@@ -108,47 +115,45 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
              System_abort("Error opening the UART");
           }
 
-
-        sprintf(string, "session:start\0");
-        UART_write(uart, string, 13);
     while (1) {
 
-        // JTKJ: Teht�v� 3. Kun tila on oikea, tulosta sensoridata merkkijonossa debug-ikkunaan
-        //       Muista tilamuutos
-        // JTKJ: Exercise 3. Print out sensor data as string to debug window if the state is correct
-        //       Remember to modify state
 
-        //sprintf(string, "id:3255,MSG1:asd,MSG2:ASD\0");
-        //UART_write(uart, string, 26);
-        //sprintf(string, "id:3255,%.2lf")
+        if(sensorState == MOTION_SENSOR){
+
+            if(programState == DATA_READY){
+                if(feed == 1){
+                    sprintf(string, "id:3255,EAT:1\0");
+                    UART_write(uart, string, 14);
+                }
+                if(pet == 1){
+                    sprintf(string, "id:3255,PET:1\0");
+                    UART_write(uart, string, 14);
+                }
+                if(workout == 1){
+                    sprintf(string, "id:3255,EXERCISE:1\0");
+                    UART_write(uart, string, 19);
+                }
+                programState = WAITING;
+
+            }
+        }else {
+            if(programState == DATA_READY){
+                if(ambientLight < 500){
+                    sprintf(string, "id:3255,MSG1:It's dark\0");
+                    UART_write(uart, string, 23);
+                }else {
+                    sprintf(string, "id:3255,MSG1:It's bright\0");
+                    UART_write(uart, string, 25);
+                }
+                programState = WAITING;
+
+            }
+
+        }
 
 
-
-        /*if(programState == DATA_READY){
-            int length;
-            if(ambientLight < 500){
-                sprintf(string, "id:3255,MSG1:It's dark\0");
-                length = 23;
-            }else {
-                sprintf(string, "id:3255,MSG1:It's bright\0");
-                length = 25;
-            }*/
-            sprintf(debugString, "id:3255,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,\0", ax, ay, az, gx, gy, gz);
-            //System_printf(debugString);
-            //programState = WAITING;
-            UART_write(uart, debugString, 25);
-
-
-        // JTKJ: Teht�v� 4. L�het� sama merkkijono UARTilla
-        // JTKJ: Exercise 4. Send the same sensor data string with UART
-
-
-        // Just for sanity check for exercise, you can comment this out
-        //System_printf("uartTask\n");
         System_flush();
-
-        // Once per second, you can modify this
-        Task_sleep(1000000 / Clock_tickPeriod);
+        Task_sleep(500000 / Clock_tickPeriod);
     }
 }
 
@@ -157,44 +162,29 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
     Char string[30];
 
-    //I2C_Handle      i2c;
-    //I2C_Params      i2cParams;
-    I2C_Handle      i2cMotion;
+    I2C_Handle      i2c;
+    I2C_Params      i2cParams;
     I2C_Params      i2cMotionParams;
 
-    //I2C_Params_init(&i2cParams);
+
+    I2C_Params_init(&i2cParams);
     I2C_Params_init(&i2cMotionParams);
-    //i2cParams.bitRate = I2C_400kHz;
+    i2cParams.bitRate = I2C_400kHz;
     i2cMotionParams.bitRate = I2C_400kHz;
     i2cMotionParams.custom = (uintptr_t)&i2cMPUCfg;
 
-
-
-
-    // JTKJ: Teht�v� 2. Avaa i2c-v�yl� taskin k�ytt��n
-    // JTKJ: Exercise 2. Open the i2c bus
-
     PIN_setOutputValue(hMpuPin,Board_MPU_POWER, Board_MPU_POWER_ON);
-/*
-       i2c = I2C_open(Board_I2C_TMP, &i2cParams);
-          if (i2c == NULL) {
-             System_abort("Error Initializing I2C\n");
-          }
-          Task_sleep(100000/Clock_tickPeriod);
 
-*/
-          //opt3001_setup(&i2c);
-          //I2C_close(i2c);
-          i2cMotion = I2C_open(Board_I2C_TMP, &i2cMotionParams);
-         if (i2cMotion == NULL) {
+
+
+         i2c = I2C_open(Board_I2C_TMP, &i2cMotionParams);
+         mpu9250_setup(&i2c);
+         if (i2c == NULL) {
                  System_abort("Error Initializing I2C\n");
          }
          Task_sleep(100000/Clock_tickPeriod);
-         mpu9250_setup(&i2cMotion);
-        //I2C_close(i2cMotion);
 
-    // JTKJ: Exercise 2. Setup the OPT3001 sensor for use
-    //       Before calling the setup function, insertt 100ms delay with Task_sleep
+
 
 
 
@@ -208,41 +198,73 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         // JTKJ: Exercise 3. Save the sensor value into the global variable
         //       Remember to modify state
 
-        /*if(sensorState == LIGHT_SENSOR){
+        if(sensorState == LIGHT_SENSOR){
+            I2C_close(i2c);
             i2c = I2C_open(Board_I2C_TMP, &i2cParams);
+            opt3001_setup(&i2c);
+
             if (i2c == NULL) {
-                 System_abort("Error Initializing I2C\n");
+               System_abort("Error Initializing I2C\n");
+            }
+            while(sensorState == LIGHT_SENSOR){
+
+                if(programState == WAITING){
+                    ambientLight = opt3001_get_data(&i2c);
+                    //sprintf(string, "%.3lf", ambientLight);
+                    programState = DATA_READY;
+                }
+                Task_sleep(100000/Clock_tickPeriod);
+
+            }
+        }
+        if(sensorState == MOTION_SENSOR){
+            I2C_close(i2c);
+            i2c = I2C_open(Board_I2C_TMP, &i2cMotionParams);
+            mpu9250_setup(&i2c);
+            if(i2c == NULL){
+               System_abort("Error Initializing I2C\n");
             }
             Task_sleep(100000/Clock_tickPeriod);
+            while(sensorState ==  MOTION_SENSOR){
+                    mpu9250_get_data(&i2c, &ax, &ay, &az, &gx, &gy, &gz);
 
-            ambientLight = opt3001_get_data(&i2c);
-            sprintf(string, "%.3lf", ambientLight);
-            programState = DATA_READY;*/
-        //}else if(sensorState == MOTION_SENSOR){
+                    if(programState == WAITING){
+                        pet = detectLift(ax, ay, az, gx);
+                        workout = detectSlide(ax, ay, az, gx, gy, gz);
+                        feed = detectTurn(ax, ay, az, gx);
+                        programState = DATA_READY;
+                    }
 
-            mpu9250_get_data(&i2cMotion, &ax, &ay, &az, &gx, &gy, &gz);
+                    if(pet == 1){
+                        sprintf(string, "Lift Up\n");
+                        System_printf(string);
+                        System_flush();
+                    }
 
 
-            int lift = detectLift(ax, ay, az, gx);
-            if(lift == 1){
-                sprintf(string, "Lift Up\n");
-                System_printf(string);
-                System_flush();
+                    if(workout == 1){
+                        sprintf(string, "Slide\n");
+                        System_printf(string);
+                        System_flush();
+                    }
+
+
+                    if(feed == 1){
+                        sprintf(string, "Turn\n");
+                        System_printf(string);
+                        System_flush();
+                    }
+                    Task_sleep(100000/Clock_tickPeriod);
             }
+        }
 
-            int slide = detectSlide(ax, ay, az, gx, gy, gz);
-            if(slide == 1){
-                sprintf(string, "Slide\n");
-                System_printf(string);
-                System_flush();
-            }
 
-            int turn = detectTurn(ax, ay, az, gx);
-            if(turn == 1){
-                sprintf(string, "Turn\n");
-                System_printf(string);
-                System_flush();
-            }
+
+
+
+
+
+
 
 
 
@@ -252,7 +274,7 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         //System_flush();
 
         // Once per second, you can modify this
-        Task_sleep(1000000 / Clock_tickPeriod);
+        Task_sleep(100000 / Clock_tickPeriod);
     }
 }
 
