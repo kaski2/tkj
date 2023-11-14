@@ -30,6 +30,7 @@
 #define STACKSIZE 2048
 Char sensorTaskStack[STACKSIZE];
 Char uartTaskStack[STACKSIZE];
+uint8_t uartBuffer[80];
 
 
 
@@ -92,6 +93,15 @@ void buttonFxn(PIN_Handle handle, PIN_Id pinId) {
 }
 
 /* Task Functions */
+//strncmp()
+Void uartFxn(UART_Handle handle, void *rxBuf, size_t len){
+    for (int n=0 ; n<4 ; n++)
+        if (strncmp (str[n],"BEEP",4) == 0)
+        {
+          //MAKE MOGUS FUNCTION :)
+        }
+}
+
 Void uartTaskFxn(UArg arg0, UArg arg1) {
     char string[100];
     //char debugString[100];
@@ -104,7 +114,8 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
        uartParams.writeDataMode = UART_DATA_TEXT;
        uartParams.readDataMode = UART_DATA_TEXT;
        uartParams.readEcho = UART_ECHO_OFF;
-       uartParams.readMode=UART_MODE_BLOCKING;
+       uartParams.readMode=UART_MODE_CALLBACK;
+       uartParams.readCallback= &uartFxn;
        uartParams.baudRate = 9600;
        uartParams.dataLength = UART_LEN_8;
        uartParams.parityType = UART_PAR_NONE;
@@ -114,7 +125,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
           if (uart == NULL) {
              System_abort("Error opening the UART");
           }
-
+          UART_read(uart, uartBuffer, 1);
     while (1) {
 
 
