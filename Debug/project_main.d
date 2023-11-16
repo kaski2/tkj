@@ -243,6 +243,8 @@ project_main.obj: ../CC2650STK.h
 project_main.obj: ../sensors/opt3001.h
 project_main.obj: ../sensors/mpu9250.h
 project_main.obj: ../motion.h
+project_main.obj: ../pitches.h
+project_main.obj: ../buzzer.h
 
 ../project_main.c:
 
@@ -729,4 +731,8 @@ project_main.obj: ../motion.h
 ../sensors/mpu9250.h:
 
 ../motion.h:
+
+../pitches.h:
+
+../buzzer.h:
 
