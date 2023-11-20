@@ -28,6 +28,7 @@
 #include "pitches.h"
 #include "buzzer.h"
 
+
 /* Task */
 #define STACKSIZE 2048
 Char sensorTaskStack[STACKSIZE];
@@ -39,7 +40,7 @@ uint8_t uartBuffer[80];
 
 // JTKJ: Teht�v� 3. Tilakoneen esittely
 // JTKJ: Exercise 3. Definition of the state machine
-enum state { WAITING=1, DATA_READY, PLAYING_SOUND};
+enum state { WAITING=1, DATA_READY};
 enum state programState = WAITING;
 //TODO MAYBE TEMP SENSOR :)
 enum motionState {MOTION_SENSOR=1, LIGHT_SENSOR};
@@ -52,6 +53,7 @@ enum motionState sensorState = MOTION_SENSOR;
 double ambientLight = -1000.0;
 float ax, ay, az, gx, gy, gz;
 int pet, feed, workout;
+int beepDetected = 0;
 
 // JTKJ: Teht�v� 1. Lis�� painonappien RTOS-muuttujat ja alustus
 static PIN_Handle buttonHandle;
@@ -87,28 +89,7 @@ PIN_Config cBuzzer[] = {
   PIN_TERMINATE
 };
 
-void mogus(){
-    /*int i;
-    for(i=0; i<36; i++){
 
-        if(notes[i] == 0){
-            buzzerClose();
-            Task_sleep(pauses[i]*1000 / Clock_tickPeriod);
-
-
-        }else {
-            buzzerOpen(hBuzzer);
-            buzzerSetFrequency(notes[i]);
-            Task_sleep(pauses[i]*1000 / Clock_tickPeriod);
-            buzzerClose();
-        }
-    }*/
-   buzzerOpen(hBuzzer);
-   buzzerSetFrequency(2000);
-   Task_sleep(50000/Clock_tickPeriod);
-   buzzerClose();
-   Task_sleep(950000 / Clock_tickPeriod);
-}
 
 void buttonFxn(PIN_Handle handle, PIN_Id pinId) {
        uint_t pinValue = PIN_getOutputValue( Board_LED0 );
@@ -127,13 +108,17 @@ void buttonFxn(PIN_Handle handle, PIN_Id pinId) {
 }
 
 /* Task Functions */
-//strncmp()
+
 Void uartFxn(UART_Handle handle, void *rxBuf, size_t len){
 
 
-    if (strncmp (rxBuf,"BEEP",4) == 0){
-        programState = PLAYING_SOUND;
+    if (strncmp (rxBuf,"3255,BEEP:I",11) == 0){
+        beepDetected = 1;
 
+    }else if(strncmp(rxBuf,"3255,BEEP:Running", 17) == 0){
+        beepDetected = 1;
+    }else if(strncmp(rxBuf,"3255,BEEP:Severe", 16) == 0){
+        beepDetected = 1;
     }
     UART_read(handle, rxBuf, 80);
 }
@@ -164,6 +149,27 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
           UART_read(uart, uartBuffer, 80);
     while (1) {
 
+        if(beepDetected == 1){
+            int i;
+            buzzerOpen(hBuzzer);
+            for(i=0; i<36; i++){
+                if(notes[i] == 0){
+                    buzzerSetFrequency(0);
+                    Task_sleep(pauses[i]*1000 / Clock_tickPeriod);
+                }else {
+                    buzzerSetFrequency(notes[i]);
+                    Task_sleep(pauses[i]*1000 / Clock_tickPeriod);
+                    buzzerSetFrequency(0);
+
+                }
+            }
+           /*buzzerOpen(hBuzzer);
+           buzzerSetFrequency(2000);
+           Task_sleep(50000/Clock_tickPeriod);*/
+           buzzerClose();
+           Task_sleep(950000 / Clock_tickPeriod);
+           beepDetected = 0;
+        }
 
         if(sensorState == MOTION_SENSOR){
 
@@ -245,10 +251,6 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         // JTKJ: Exercise 3. Save the sensor value into the global variable
         //       Remember to modify state
 
-        if(programState == PLAYING_SOUND){
-            mogus();
-            programState = WAITING;
-        }
 
         if(sensorState == LIGHT_SENSOR){
             I2C_close(i2c);
@@ -309,16 +311,6 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
                     Task_sleep(100000/Clock_tickPeriod);
             }
         }
-
-
-
-
-
-
-
-
-
-
 
         // Just for sanity check for exercise, you can comment this out
        // System_printf("sensorTask\n");
