@@ -1,3 +1,6 @@
+// Christian R. Miko Nikula, Aapo Kinnunen
+
+
 /* C Standard library */
 #include <stdio.h>
 #include <string.h>
@@ -36,26 +39,18 @@ Char uartTaskStack[STACKSIZE];
 uint8_t uartBuffer[80];
 
 
-
-
-// JTKJ: Teht�v� 3. Tilakoneen esittely
-// JTKJ: Exercise 3. Definition of the state machine
 enum state { WAITING=1, DATA_READY};
 enum state programState = WAITING;
-//TODO MAYBE TEMP SENSOR :)
 enum motionState {MOTION_SENSOR=1, LIGHT_SENSOR};
 enum motionState sensorState = MOTION_SENSOR;
 
 
-
-// JTKJ: Teht�v� 3. Valoisuuden globaali muuttuja
-// JTKJ: Exercise 3. Global variable for ambient light
 double ambientLight = -1000.0;
 float ax, ay, az, gx, gy, gz;
 int pet, feed, workout;
 int beepDetected = 0;
 
-// JTKJ: Teht�v� 1. Lis�� painonappien RTOS-muuttujat ja alustus
+
 static PIN_Handle buttonHandle;
 static PIN_State buttonState;
 static PIN_Handle ledHandle;
@@ -63,7 +58,7 @@ static PIN_State ledState;
 static PIN_Handle hMpuPin;
 static PIN_State  MpuPinState;
 
-// JTKJ: Exercise 1. Add pins RTOS-variables and configuration here
+
 PIN_Config buttonConfig[] = {
    Board_BUTTON0  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
    PIN_TERMINATE};
@@ -103,8 +98,6 @@ void buttonFxn(PIN_Handle handle, PIN_Id pinId) {
        }else {
            sensorState = MOTION_SENSOR;
        }
-    // JTKJ: Teht�v� 1. Vilkuta jompaa kumpaa ledi�
-    // JTKJ: Exercise 1. Blink either led of the device
 }
 
 /* Task Functions */
@@ -125,8 +118,6 @@ Void uartFxn(UART_Handle handle, void *rxBuf, size_t len){
 
 Void uartTaskFxn(UArg arg0, UArg arg1) {
     char string[100];
-    //char debugString[100];
-    // UART alustus
 
     UART_Handle uart;
     UART_Params uartParams;
@@ -163,9 +154,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
                 }
             }
-           /*buzzerOpen(hBuzzer);
-           buzzerSetFrequency(2000);
-           Task_sleep(50000/Clock_tickPeriod);*/
            buzzerClose();
            Task_sleep(950000 / Clock_tickPeriod);
            beepDetected = 0;
@@ -177,14 +165,27 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                 if(feed == 1){
                     sprintf(string, "id:3255,EAT:1\0");
                     UART_write(uart, string, 14);
+                    buzzerOpen(hBuzzer);
+                    buzzerSetFrequency(2000);
+                    Task_sleep(50000/Clock_tickPeriod);
+                    buzzerClose();
                 }
                 if(pet == 1){
                     sprintf(string, "id:3255,PET:1\0");
                     UART_write(uart, string, 14);
+                    buzzerOpen(hBuzzer);
+                    buzzerSetFrequency(5000);
+                    Task_sleep(50000/Clock_tickPeriod);
+                    buzzerClose();
+
                 }
                 if(workout == 1){
                     sprintf(string, "id:3255,EXERCISE:1\0");
                     UART_write(uart, string, 19);
+                    buzzerOpen(hBuzzer);
+                    buzzerSetFrequency(7000);
+                    Task_sleep(50000/Clock_tickPeriod);
+                    buzzerClose();
                 }
                 programState = WAITING;
 
@@ -243,15 +244,6 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
     while (1) {
 
-        // JTKJ: Teht�v� 2. Lue sensorilta dataa ja tulosta se Debug-ikkunaan merkkijonona
-        // JTKJ: Exercise 2. Read sensor data and print it to the Debug window as string
-
-        // JTKJ: Teht�v� 3. Tallenna mittausarvo globaaliin muuttujaan
-        //       Muista tilamuutos
-        // JTKJ: Exercise 3. Save the sensor value into the global variable
-        //       Remember to modify state
-
-
         if(sensorState == LIGHT_SENSOR){
             I2C_close(i2c);
             i2c = I2C_open(Board_I2C_TMP, &i2cParams);
@@ -264,7 +256,6 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
                 if(programState == WAITING){
                     ambientLight = opt3001_get_data(&i2c);
-                    //sprintf(string, "%.3lf", ambientLight);
                     programState = DATA_READY;
                 }
                 Task_sleep(100000/Clock_tickPeriod);
@@ -311,13 +302,6 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
                     Task_sleep(100000/Clock_tickPeriod);
             }
         }
-
-        // Just for sanity check for exercise, you can comment this out
-       // System_printf("sensorTask\n");
-        //System_printf("%s\n",string);
-        //System_flush();
-
-        // Once per second, you can modify this
         Task_sleep(100000 / Clock_tickPeriod);
     }
 }
@@ -334,18 +318,9 @@ Int main(void) {
 
     // Initialize board
     Board_initGeneral();
-
-    
-    // JTKJ: Teht�v� 2. Ota i2c-v�yl� k�ytt��n ohjelmassa
-    // JTKJ: Exercise 2. Initialize i2c bus
     Board_initI2C();
-
-    // JTKJ: Teht�v� 4. Ota UART k�ytt��n ohjelmassa
-    // JTKJ: Exercise 4. Initialize UART
     Board_initUART();
 
-    // JTKJ: Teht�v� 1. Ota painonappi ja ledi ohjelman k�ytt��n
-    //       Muista rekister�id� keskeytyksen k�sittelij� painonapille
     buttonHandle = PIN_open(&buttonState, buttonConfig);
        if(!buttonHandle) {
           System_abort("Error initializing button pins\n");
@@ -354,8 +329,7 @@ Int main(void) {
        if(!ledHandle) {
           System_abort("Error initializing LED pins\n");
        }
-    // JTKJ: Exercise 1. Open the button and led pins
-    //       Remember to register the above interrupt handler for button
+
        if (PIN_registerIntCb(buttonHandle, &buttonFxn) != 0) {
              System_abort("Error registering button callback function");
           }
@@ -389,7 +363,6 @@ Int main(void) {
         System_abort("Task create failed!");
     }
 
-    /* Sanity check */
     System_printf("Hello world!\n");
     System_flush();
 
